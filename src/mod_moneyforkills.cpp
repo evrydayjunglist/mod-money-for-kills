@@ -134,7 +134,7 @@ public:
 	{
 		// If enabled...
 		if (sConfigMgr->GetOption<bool>(MFKEnable, true))
-		{
+        {
             if (!sConfigMgr->GetOption<bool>(MFKPVPStealInBattlegrounds, false))
             {
                 if (killer->InBattleground() || killer->InArena() || killer->IsInWintergrasp() ||
@@ -142,7 +142,14 @@ public:
                 {
                     return;
                 }
-            }
+				
+		// Don't steal in dungeons or raids
+				if (killer->GetMap()->IsDungeon() || killer->GetMap()->IsRaid() ||
+					victim->GetMap()->IsDungeon() || victim->GetMap()->IsRaid())
+				{
+					return;
+				}
+			}
 
 			const uint32 PVPMultiplier = sConfigMgr->GetOption<uint32>(MFKPVPKillMult, 0);
 			const uint32 VictimLevel = victim->getLevel();
@@ -213,8 +220,9 @@ public:
                 VictimLootTokenStealCount != 0 &&
                 VictimLootTokenCount >= VictimLootTokenStealCount)
             {
-                // Steal a percentage of the victims tokens
+                // Steal and burn a percentage of the victims tokens
                 victim->DestroyItemCount(TokenId, VictimLootTokenStealCount, true);
+				VictimLootTokenStealCount = VictimLootTokenStealCount * sConfigMgr->GetOption<float>("MFK.PVP.KeepRatio", 1.00);
                 killer->AddItem(TokenId, VictimLootTokenStealCount);
 
                 // Inform the player of the corpse loot
@@ -341,7 +349,7 @@ public:
 
         if (kType == KILLTYPE_LOOT_TOKEN)
         {
-            rewardVal.append(" ").append(std::to_string(reward)).append(" token(s)");
+            rewardVal.append(" ").append(std::to_string(reward)).append(" Oceanic War Coin(s)");
         }
         else
         {
@@ -367,7 +375,7 @@ public:
             {
                 rewardMsg.clear();
                 rewardMsg.append("|cff676767[ |cffFFFF00World |cff676767]|r:|cff4CFF00 ").append(killer->GetName()).append(" |cffFF0000has slain ");
-                rewardMsg.append(victim->GetName()).append(" stealing").append(rewardVal).append(".");
+                rewardMsg.append("|cff4CFF00").append(victim->GetName()).append(" |cffFF0000stealing").append(rewardVal).append(", the other half lost in the bloodshed.");
                 sWorld->SendServerMessage(SERVER_MSG_STRING, rewardMsg.c_str());
             }
             break;
