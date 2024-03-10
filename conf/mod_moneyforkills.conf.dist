@@ -38,7 +38,8 @@ MFK.Announce.Group.Suicide = 0
 # Enable PvP announcements
 # Default 1
 
-MFK.Announce.World.PvP = 1
+MFK.Announce.World.PvP.Bounty = 1
+MFK.Announce.World.PvP.Loot = 1
 
 # Enable Group announcements for killing a dungeon boss
 # Default 1
@@ -58,8 +59,34 @@ MFK.Bounty.MoneyForNothing = 0
 # How much gold does a Player take from the victim's corpse on a PVP kill?
 # Setting this to 0 will disable player gold stealing.
 # Default: 5 (5% of the victim's gold)
+# Range: 1-100
 
 MFK.PVP.CorpseLootPercent = 5
+
+# The token item id that will be awarded to the player from the victim.
+# Default: 37711 (Currency Token Test Token 1)
+MFK.PVP.CorpseLootToken = 37711
+
+# The amount of tokens that will be stolen on killing blow.
+# Setting this to 0 will disable the token count being stolen.
+# Default: 0
+MFK.PVP.CorpseLootTokenCount = 0
+
+# The percentage amount of tokens that will be stolen on killing blow.
+# If this value is over 0 it will override the CorpseLootTokenCount.
+# Default: 5 (5% of the victim's tokens)
+# Range: 1-100
+MFK.PVP.CorpseLootTokenPercent = 5
+
+# How many levels you need to be within before you can steal gold/tokens.
+# Setting this to 0 will disable the level range check.
+# Default: 5
+MFK.PVP.CorpseLootLevelRange = 5
+
+# Allows players to steal from each other in battlegrounds.
+# Setting this to 0 will disable players from stealing in bgs.
+# Default: 0
+MFK.PVP.StealInBattlegrounds = 0
 
 # Creature kills are expressed in Copper and calculated as ((CreatureLevel * Multiplier) / 3)
 # Player kills are expressed in Copper and calculated as ((PlayerLevel * Multiplier) / 3)

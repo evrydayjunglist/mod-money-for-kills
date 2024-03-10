@@ -83,6 +83,7 @@ reward range of the group and an option to only reward the player that got the k
 enum KillType
 {
 	KILLTYPE_LOOT,
+    KILLTYPE_LOOT_TOKEN,
 	KILLTYPE_PVP,
 	KILLTYPE_DUNGEONBOSS,
 	KILLTYPE_WORLDBOSS,
@@ -97,10 +98,16 @@ static constexpr const char* MFKAnnounceDungeonBoss = "MFK.Announce.Group.Dungeo
 static constexpr const char* MFKAnnounceWorldSuicide = "MFK.Announce.World.Suicide";
 static constexpr const char* MFKAnnounceGuildSuicide = "MFK.Announce.Guild.Suicide";
 static constexpr const char* MFKAnnounceGroupSuicide = "MFK.Announce.Group.Suicide";
-static constexpr const char* MFKAnnouncePvP = "MFK.Announce.World.PvP";
+static constexpr const char* MFKAnnouncePvPBounty = "MFK.Announce.World.PvP.Bounty";
+static constexpr const char* MFKAnnouncePvPLoot = "MFK.Announce.World.PvP.Loot";
 static constexpr const char* MFKBountyKillingBlow = "MFK.Bounty.KillingBlowOnly";
 static constexpr const char* MFKBountyMoneyForNothing = "MFK.Bounty.MoneyForNothing";
 static constexpr const char* MFKPVPCorpseLootPercent = "MFK.PVP.CorpseLootPercent";
+static constexpr const char* MFKPVPCorpseLootToken = "MFK.PVP.CorpseLootToken";
+static constexpr const char* MFKPVPCorpseLootTokenCount = "MFK.PVP.CorpseLootTokenCount";
+static constexpr const char* MFKPVPCorpseLootTokenPercent = "MFK.PVP.CorpseLootTokenPercent";
+static constexpr const char* MFKPVPCorpseLevelRange = "MFK.PVP.CorpseLootLevelRange";
+static constexpr const char* MFKPVPStealInBattlegrounds = "MFK.PVP.StealInBattlegrounds";
 static constexpr const char* MFKBountyKillMult = "MFK.Bounty.Kill.Multiplier";
 static constexpr const char* MFKPVPKillMult = "MFK.PVP.Kill.Multiplier";
 static constexpr const char* MFKBountyKillDBMult = "MFK.Bounty.DungeonBoss.Multiplier";
@@ -128,19 +135,41 @@ public:
 		// If enabled...
 		if (sConfigMgr->GetOption<bool>(MFKEnable, true))
 		{
+            if (!sConfigMgr->GetOption<bool>(MFKPVPStealInBattlegrounds, false))
+            {
+                if (killer->InBattleground() || killer->InArena() || killer->IsInWintergrasp() ||
+                    victim->InBattleground() || victim->InArena() || victim->IsInWintergrasp())
+                {
+                    return;
+                }
+            }
+
 			const uint32 PVPMultiplier = sConfigMgr->GetOption<uint32>(MFKPVPKillMult, 0);
 			const uint32 VictimLevel = victim->getLevel();
+
+            if (sConfigMgr->GetOption<uint32>(MFKPVPCorpseLevelRange, 5))
+            {
+                const uint32 LevelRange = sConfigMgr->GetOption<uint32>(MFKPVPCorpseLevelRange, 5);
+                const uint32 KillerLevel = killer->getLevel();
+                const uint32 CurrentRange = std::abs(int32(KillerLevel - VictimLevel));
+
+                //The kill was not in the range so the player should not be rewarded.
+                if (CurrentRange > LevelRange)
+                {
+                    return;
+                }
+            }
+
+            // No reward for killing yourself
+            if (killer->GetGUID() == victim->GetGUID())
+            {
+                Notify(killer, victim, nullptr, KILLTYPE_SUICIDE, 0);
+                return;
+            }
 
 			// If enabled...
 			if (PVPMultiplier > 0)
 			{
-				// No reward for killing yourself
-				if (killer->GetGUID() == victim->GetGUID())
-				{
-					Notify(killer, victim, nullptr, KILLTYPE_SUICIDE, 0);
-					return;
-				}
-
 				const int BountyAmount = ((VictimLevel * PVPMultiplier) / 3);
 
 				// Pay the player the additional PVP bounty
@@ -163,6 +192,34 @@ public:
 				// Inform the player of the corpse loot
 				Notify(killer, victim, nullptr, KILLTYPE_LOOT, VictimLoot);
 			}
+
+            //Calculate the amount of tokens to give to the victor
+            uint32 TokenId = sConfigMgr->GetOption<uint32>(MFKPVPCorpseLootToken, 37711);
+            const uint32 PVPCorpseLootTokenPercent = sConfigMgr->GetOption<uint32>(MFKPVPCorpseLootTokenPercent, 5);
+            const uint32 VictimLootTokenCount = victim->GetItemCount(TokenId, false);
+            uint32 VictimLootTokenStealCount = 0;
+
+            // If the token percent is over 0 then it overrides the count value.
+            if (PVPCorpseLootTokenPercent > 0)
+            {
+                VictimLootTokenStealCount = (VictimLootTokenCount * PVPCorpseLootTokenPercent) / 100;
+            }
+            else
+            {
+                VictimLootTokenStealCount = sConfigMgr->GetOption<uint32>(MFKPVPCorpseLootTokenCount, 0);
+            }
+
+            if (VictimLootTokenCount != 0 &&
+                VictimLootTokenStealCount != 0 &&
+                VictimLootTokenCount >= VictimLootTokenStealCount)
+            {
+                // Steal a percentage of the victims tokens
+                victim->DestroyItemCount(TokenId, VictimLootTokenStealCount, true);
+                killer->AddItem(TokenId, VictimLootTokenStealCount);
+
+                // Inform the player of the corpse loot
+                Notify(killer, victim, nullptr, KILLTYPE_LOOT_TOKEN, VictimLootTokenStealCount);
+            }
 
 			return;
 		}
@@ -278,25 +335,44 @@ public:
 
 	void Notify(Player * killer, Player * victim, Creature * killed, KillType kType, int reward)
 	{
-		int rewardBreakdown[3];
-		rewardBreakdown[0] = reward / 10000;
-		reward = reward - rewardBreakdown[0] * 10000;
-		rewardBreakdown[1] = reward / 100;
-		rewardBreakdown[2] = reward - (rewardBreakdown[1] * 100);
+        std::string rewardMsg = "";
+        std::string victimMsg = "";
+        std::string rewardVal = "";
 
-		std::string rewardMsg = "";
-		std::string victimMsg = "";
-		std::string rewardVal = BuildRewardString(&rewardBreakdown[0]);
+        if (kType == KILLTYPE_LOOT_TOKEN)
+        {
+            rewardVal.append(" ").append(std::to_string(reward)).append(" token(s)");
+        }
+        else
+        {
+            int rewardBreakdown[3];
+            rewardBreakdown[0] = reward / 10000;
+            reward = reward - rewardBreakdown[0] * 10000;
+            rewardBreakdown[1] = reward / 100;
+            rewardBreakdown[2] = reward - (rewardBreakdown[1] * 100);
+
+            rewardVal = BuildRewardString(&rewardBreakdown[0]);
+        }
+		
 		switch (kType)
 		{
+        case KILLTYPE_LOOT_TOKEN:
 		case KILLTYPE_LOOT:
 			rewardMsg.append("You loot").append(rewardVal).append(" from the corpse.");
 			victimMsg.append(killer->GetName()).append(" rifles through your corpse and takes").append(rewardVal).append(".");
 			ChatHandler(victim->GetSession()).SendSysMessage(victimMsg.c_str());
 			ChatHandler(killer->GetSession()).SendSysMessage(rewardMsg.c_str());
-			break;
+
+            if (sConfigMgr->GetOption<bool>(MFKAnnouncePvPLoot, true))
+            {
+                rewardMsg.clear();
+                rewardMsg.append("|cff676767[ |cffFFFF00World |cff676767]|r:|cff4CFF00 ").append(killer->GetName()).append(" |cffFF0000has slain ");
+                rewardMsg.append(victim->GetName()).append(" stealing").append(rewardVal).append(".");
+                sWorld->SendServerMessage(SERVER_MSG_STRING, rewardMsg.c_str());
+            }
+            break;
 		case KILLTYPE_PVP:
-			if (sConfigMgr->GetOption<bool>(MFKAnnouncePvP, true))
+			if (sConfigMgr->GetOption<bool>(MFKAnnouncePvPBounty, true))
 			{
 				rewardMsg.append("|cff676767[ |cffFFFF00World |cff676767]|r:|cff4CFF00 ").append(killer->GetName()).append(" |cffFF0000has slain ");
 				rewardMsg.append(victim->GetName()).append(" earning a bounty of").append(rewardVal).append(".");
@@ -356,7 +432,7 @@ public:
 
 		}
 
-		if (kType != KILLTYPE_LOOT && kType != KILLTYPE_WORLDBOSS && kType != KILLTYPE_SUICIDE)
+		if (kType != KILLTYPE_LOOT && kType != KILLTYPE_LOOT_TOKEN && kType != KILLTYPE_WORLDBOSS && kType != KILLTYPE_SUICIDE)
 		{
 			rewardMsg.clear();
 			rewardMsg.append("You receive a bounty of");
@@ -368,16 +444,17 @@ public:
 
 	std::string BuildRewardString(int * reward)
 	{
-		std::string currSymbol[3] = { " gold", " silver", " copper" };
 		std::string rewardMsg = "";
-		for (int i = 0; i < 3; i++)
-		{
-			if (reward[i] > 0)
-			{
-				rewardMsg.append(" ").append(std::to_string(reward[i]));
-				rewardMsg.append(currSymbol[i]);
-			}
-		}
+        std::string currSymbol[3] = { " gold", " silver", " copper" };
+
+        for (int i = 0; i < 3; i++)
+        {
+            if (reward[i] > 0)
+            {
+                rewardMsg.append(" ").append(std::to_string(reward[i]));
+                rewardMsg.append(currSymbol[i]);
+            }
+        }
 
 		return rewardMsg;
 	}
