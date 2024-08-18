@@ -16,6 +16,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install cmake and dependencies
+        run: |
+          apt-get update
+          apt-get install -y cmake make g++ clang
+
       - name: Get repository name
         id: repo-name
         run: echo "REPO_NAME=$(basename $GITHUB_REPOSITORY | sed 's|.*/||')" >> $GITHUB_ENV
