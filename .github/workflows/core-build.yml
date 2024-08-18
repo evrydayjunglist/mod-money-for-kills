@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/araxiaonline/ac-wotlk-worldserver:latest
+      options: --user root
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
