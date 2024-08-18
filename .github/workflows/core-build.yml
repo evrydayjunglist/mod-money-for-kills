@@ -32,9 +32,9 @@ jobs:
 
       - name: Rebuild Modules
         run: |
-          cd /azerothcore/build \
-          && cmake ../modules -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-          && cmake --build . --config RelWithDebInfo -j $(($(nproc) + 1))
+            cd /azerothcore/build \
+            && cmake ../modules -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            && cmake --build . --config RelWithDebInfo -j $(($(nproc) + 1))
 
       - name: cpp check
         run: |
