@@ -27,26 +27,8 @@ jobs:
 
       - name: Rebuild Modules with Caching
         run: |
-            cd /azerothcore/build \
-            && --mount=type=cache,target=/ccache,sharing=locked \
-            --mount=type=bind,target=/azerothcore/.git,source=.git \
-            git config --global --add safe.directory /azerothcore \
-            && cmake /azerothcore \
-                -DCMAKE_INSTALL_PREFIX="/azerothcore/env/dist"  \
-                -DAPPS_BUILD="all"                              \
-                -DTOOLS_BUILD="$CTOOLS_BUILD"                   \
-                -DSCRIPTS="$CSCRIPTS"                           \
-                -DMODULES="$CMODULES"                           \
-                -DWITH_WARNINGS="$CWITH_WARNINGS"               \
-                -DCMAKE_BUILD_TYPE="$CTYPE"                     \
-                -DCMAKE_CXX_COMPILER="clang++"                  \
-                -DCMAKE_C_COMPILER="clang"                      \
-                -DCMAKE_CXX_COMPILER_LAUNCHER="ccache"          \
-                -DCMAKE_C_COMPILER_LAUNCHER="ccache"            \
-                -DBoost_USE_STATIC_LIBS="ON"                    \
-            && cmake --build . --config "$CTYPE" -j $(($(nproc) + 1)) \
-            && cmake --install . --config "$CTYPE"
-
+            cd /azerothcore/
+            ./acore.sh docker build
 
       - name: cpp check
         run: |
