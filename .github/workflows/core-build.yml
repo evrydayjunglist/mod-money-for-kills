@@ -8,18 +8,13 @@ jobs:
   release-on-push:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/araxiaonline/ac-wotlk-worldserver:latest
+      image: ghcr.io/araxiaonline/ac-wotlk-worldserver-devcontainer:latest
       options: --user root
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Install cmake and dependencies
-        run: |
-          apt-get update
-          apt-get install -y cmake make g++ clang
 
       - name: Get repository name
         id: repo-name
@@ -30,11 +25,28 @@ jobs:
           mkdir -p /azerothcore/modules/${{ env.REPO_NAME }}
           cp -r . /azerothcore/modules/${{ env.REPO_NAME }}
 
-      - name: Rebuild Modules
+      - name: Rebuild Modules with Caching
         run: |
             cd /azerothcore/build \
-            && cmake ../modules -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            && cmake --build . --config RelWithDebInfo -j $(($(nproc) + 1))
+            && --mount=type=cache,target=/ccache,sharing=locked \
+            --mount=type=bind,target=/azerothcore/.git,source=.git \
+            git config --global --add safe.directory /azerothcore \
+            && cmake /azerothcore \
+                -DCMAKE_INSTALL_PREFIX="/azerothcore/env/dist"  \
+                -DAPPS_BUILD="all"                              \
+                -DTOOLS_BUILD="$CTOOLS_BUILD"                   \
+                -DSCRIPTS="$CSCRIPTS"                           \
+                -DMODULES="$CMODULES"                           \
+                -DWITH_WARNINGS="$CWITH_WARNINGS"               \
+                -DCMAKE_BUILD_TYPE="$CTYPE"                     \
+                -DCMAKE_CXX_COMPILER="clang++"                  \
+                -DCMAKE_C_COMPILER="clang"                      \
+                -DCMAKE_CXX_COMPILER_LAUNCHER="ccache"          \
+                -DCMAKE_C_COMPILER_LAUNCHER="ccache"            \
+                -DBoost_USE_STATIC_LIBS="ON"                    \
+            && cmake --build . --config "$CTYPE" -j $(($(nproc) + 1)) \
+            && cmake --install . --config "$CTYPE"
+
 
       - name: cpp check
         run: |
