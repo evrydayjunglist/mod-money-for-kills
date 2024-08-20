@@ -27,8 +27,21 @@ jobs:
 
       - name: Rebuild Modules with Caching
         run: |
-            cd /azerothcore/
-            echo $(ls -la)
+          cd /azerothcore/build \
+          && cmake /azerothcore \
+             -DCMAKE_INSTALL_PREFIX="/azerothcore/env/dist"  \
+             -DAPPS_BUILD="all"                              \
+             -DTOOLS_BUILD="all"                             \
+             -DSCRIPTS="static"                              \
+             -DMODULES="static"                              \
+             -DWITH_WARNINGS="ON"                            \
+             -DCMAKE_BUILD_TYPE="RelWithDebInfo"             \
+             -DCMAKE_CXX_COMPILER="clang++"                  \
+             -DCMAKE_C_COMPILER="clang"                      \
+             -DCMAKE_CXX_COMPILER_LAUNCHER="ccache"          \
+             -DCMAKE_C_COMPILER_LAUNCHER="ccache"            \
+             -DBoost_USE_STATIC_LIBS="ON"                    \
+          && cmake --build . --config "RelWithDebInfo" -j $(($(nproc) + 1))
 
       - name: cpp check
         run: |
