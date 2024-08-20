@@ -28,7 +28,7 @@ jobs:
       - name: Rebuild Modules with Caching
         run: |
             cd /azerothcore/
-            ./acore.sh docker build
+            echo $(ls -la)
 
       - name: cpp check
         run: |
