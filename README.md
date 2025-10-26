@@ -1,7 +1,15 @@
-# ![logo](https://raw.githubusercontent.com/azerothcore/azerothcore.github.io/master/images/logo-github.png) AzerothCore
-## mod-money-for-kills 
-### This is a module for [AzerothCore](http://www.azerothcore.org)
-- Latest build status with azerothcore: [![Build Status](https://github.com/azerothcore/mod-money-for-kills/workflows/core-build/badge.svg?branch=master&event=push)](https://github.com/azerothcore/mod-money-for-kills)
+# ![logo](https://raw.githubusercontent.com/azerothcore/azerothcore.github.io/master/images/logo-github.png) Azeroth Core Module
+
+## mod-money-for-kills
+
+![Latest Release](https://img.shields.io/github/v/release/araxiaonline/mod-money-for-kills?label=current%20version)
+![GitHub Release Date](https://img.shields.io/github/release-date/araxiaonline/mod-money-for-kills)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/araxiaonline/mod-money-for-kills/build-release.yml?branch=araxia-main&event=push&label=build%20status)
+
+<p align="left">
+  <img src="https://github.com/araxiaonline/docs/blob/main/docs/media/logo-sm.png?raw=true" alt="Araxia Online" width="70" style="vertical-align: middle;"/>
+  <span style="font-size: 20px; vertical-align: middle;">Player Tested By Araxia Online</span>
+</p>
 
 #### Features:
 - Money for Kills and kill announcer for Azerothcore
